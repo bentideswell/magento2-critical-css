@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework:ObjectManager/etc/config.xsd">
+    <virtualType name="AssetPreProcessorPool">
+        <arguments>
+            <argument name="preprocessors" xsi:type="array">
+                <item name="css" xsi:type="array">
+                    <item name="fishpig_critical_css" xsi:type="array">
+                        <!--<item name="after" xsi:type="string">import</item>-->
+                        <item name="class" xsi:type="string">FishPig\CriticalCss\App\Css\PreProcessor\CriticalCss</item>
+                    </item>
+                </item>
+            </argument>
+        </arguments>
+    </virtualType>
+    <type name="Magento\Framework\Console\CommandList">
+        <arguments>
+            <argument name="commands" xsi:type="array">
+                <item name="fishpig-critical-css" xsi:type="object">FishPig\CriticalCss\Console\Command\CompileCommand</item>
+            </argument>
+        </arguments>
+    </type>
+</config>

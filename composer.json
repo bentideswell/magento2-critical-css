@@ -1,0 +1,14 @@
+{
+    "name": "fishpig/magento2-critical-css",
+    "description": "",
+    "version": "1.0.0",
+    "type": "magento2-module",
+    "autoload": {
+        "files": [
+            "registration.php"
+        ],
+        "psr-4": {
+            "FishPig\\CriticalCss\\": ""
+        }
+    }
+}
