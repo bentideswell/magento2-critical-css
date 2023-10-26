@@ -64,6 +64,7 @@ class DataProvider
             ]
         );
 
+
         $css = $this->cssModifier->getCriticalCss($file->getContent());
 
         // Fix relative URLs
@@ -84,6 +85,6 @@ class DataProvider
             }
         }
 
-        return $css;
+        return trim($css);
     }
 }

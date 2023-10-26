@@ -11,7 +11,7 @@ class CssModifier
      */
     const CRITICAL = '/* @critical */';
     const CRITICAL_START = '/* @critical:start */';
-    const CRITICAL_STOP = '/* @critical:start */';
+    const CRITICAL_STOP = '/* @critical:stop */';
     const CRITICAL_RULE_START = '/* @critical:rule:start:';
     const CRITICAL_RULE_END   = ':@critical:rule:end */';
 
@@ -21,7 +21,6 @@ class CssModifier
      */
     public function getCriticalCss(string $css): string
     {
-
         $css = $this->prepareCss($css);
         $css = $this->normalizeCriticalCssComments($css);
 
@@ -94,7 +93,7 @@ class CssModifier
     {
         // PreProcessors put comments on a new line. This returns critical comments
         // onto the correct line
-        $css = preg_replace('/\n\s+(' . $this->getEscapedComment(self::CRITICAL) . '\n)/', ' $1', $css);
+        $css = "\n" . preg_replace('/\n\s+(' . $this->getEscapedComment(self::CRITICAL) . '\n)/', ' $1', $css) . "\n";
 
         // Convert the start/end comments into single line comments.
         // This makes processing easier
