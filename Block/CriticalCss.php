@@ -5,13 +5,14 @@
 namespace FishPig\CriticalCss\Block;
 
 use Magento\Framework\App\View\Deployment\Version\StorageInterface;
+use FishPig\CriticalCss\App\CriticalTags;
 
 class CriticalCss extends \Magento\Framework\View\Element\AbstractBlock
 {
     /**
      *
      */
-    private $dataProvider = null;
+    private $criticalCssProvider = null;
 
     /**
      *
@@ -31,15 +32,22 @@ class CriticalCss extends \Magento\Framework\View\Element\AbstractBlock
     /**
      *
      */
+    private $locations = [
+        CriticalTags::GLOBAL_LOCATION
+    ];
+
+    /**
+     *
+     */
     public function __construct(
         \Magento\Framework\View\Element\Context $context,
-        \FishPig\CriticalCss\App\DataProvider $dataProvider,
+        \FishPig\CriticalCss\App\FileDataProvider $criticalCssProvider,
         \FishPig\CriticalCss\Model\Config $config,
         \tubalmartin\CssMin\Minifier $cssMinifier,
         StorageInterface $deploymentVersionStorage,
         array $data = []
     ) {
-        $this->dataProvider = $dataProvider;
+        $this->criticalCssProvider = $criticalCssProvider;
         $this->config = $config;
         $this->cssMinifier = $cssMinifier;
         $this->deploymentVersionStorage = $deploymentVersionStorage;
@@ -47,8 +55,27 @@ class CriticalCss extends \Magento\Framework\View\Element\AbstractBlock
         parent::__construct($context, $data);
 
         $this->setCacheLifetime(
-            $this->getTargetFile() && $this->isCriticalCssEnabled() ? 31449600 : null
+            $this->isCacheEnabled() ? 31449600 : null
         );
+    }
+
+    /**
+     *
+     */
+    public function addLocation(string $location): self
+    {
+        $this->locations[$location] = $location;
+        return $this;
+    }
+
+    /**
+     *
+     */
+    public function getLocations(): ?array
+    {
+        return array_values(
+            array_unique($this->locations)
+        ) ?: null;
     }
 
     /**
@@ -64,13 +91,17 @@ class CriticalCss extends \Magento\Framework\View\Element\AbstractBlock
             return '';
         }
 
-        if (!($css = $this->dataProvider->getCriticalCss($targetFile))) {
+        if (!($css = $this->criticalCssProvider->get($targetFile, $this->getLocations()))) {
             return '';
+        }
+
+        if ($this->isMinifyEnabled()) {
+            $css = $this->cssMinifier->run($css);
         }
 
         return sprintf(
             '<style type="text/css">%s</style>',
-            $this->cssMinifier->run($css)
+            $css
         );
     }
 
@@ -93,12 +124,31 @@ class CriticalCss extends \Magento\Framework\View\Element\AbstractBlock
     /**
      *
      */
+    public function isCacheEnabled(): bool
+    {
+        return false;
+        return $this->getTargetFile() && $this->isCriticalCssEnabled();
+    }
+
+    /**
+     *
+     */
+    public function isMinifyEnabled(): bool
+    {
+        return false;
+    }
+
+    /**
+     *
+     */
     public function getCacheKeyInfo()
     {
         return [
             $this->getNameInLayout(),
             $this->getTargetFile(),
+            implode('::', $this->getLocations()),
             (int)$this->isCriticalCssEnabled(),
+            (int)$this->isMinifyEnabled(),
             $this->deploymentVersionStorage->load()
         ];
     }
