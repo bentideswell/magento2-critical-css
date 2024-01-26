@@ -1,13 +1,19 @@
 <?xml version="1.0"?>
 <config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
         xsi:noNamespaceSchemaLocation="urn:magento:framework:ObjectManager/etc/config.xsd">
-    <virtualType name="AssetPreProcessorPool">
+    <virtualType name="AssetPreProcessorPool" type="Magento\Framework\View\Asset\PreProcessor\Pool">
         <arguments>
             <argument name="preprocessors" xsi:type="array">
-                <item name="css" xsi:type="array">
-                    <item name="fishpig_critical_css" xsi:type="array">
+                <item name="less" xsi:type="array">
+                    <item name="fishpig-critical-css-prepare-less" xsi:type="array">
                         <!--<item name="after" xsi:type="string">import</item>-->
-                        <item name="class" xsi:type="string">FishPig\CriticalCss\App\Css\PreProcessor\CriticalCss</item>
+                        <item name="class" xsi:type="string">FishPig\CriticalCss\App\PreProcessor\LessPreProcessor</item>
+                    </item>
+                </item>
+                <item name="css" xsi:type="array">
+                    <item name="fishpig-critical-css" xsi:type="array">
+                        <!--<item name="after" xsi:type="string">import</item>-->
+                        <item name="class" xsi:type="string">FishPig\CriticalCss\App\PreProcessor\CssPreProcessor</item>
                     </item>
                 </item>
             </argument>
@@ -19,5 +25,8 @@
                 <item name="fishpig-critical-css" xsi:type="object">FishPig\CriticalCss\Console\Command\CompileCommand</item>
             </argument>
         </arguments>
+    </type>
+    <type name="Magento\Framework\View\Asset\File">
+        <plugin name="fishpig-critical-css" type="FishPig\CriticalCss\Plugin\Magento\Framework\View\Asset\FilePlugin"/>
     </type>
 </config>
