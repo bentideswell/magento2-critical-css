@@ -18,10 +18,11 @@ class CriticalCssPostProcessor extends AbstractProcessor
         $locations = null,
         ?string $url = null
     ): string {
-        $locations = $this->criticalTags->resolveLocations($locations);
-
         $input = $this->removeNewLinesInSelectors($input);
-        $input = $this->removeNonCriticalLines($input, $locations);
+        $input = $this->removeNonCriticalLines(
+            $input,
+            $this->criticalTags->resolveLocations($locations)
+        );
         $input = $this->removeEmptyRules($input);
 
         if ($url) {
@@ -34,101 +35,94 @@ class CriticalCssPostProcessor extends AbstractProcessor
     /**
      *
      */
-    private function removeEmptyRules(string $css): string
+    private function removeEmptyRules(string $input): string
     {
         // Remove comments
-        $css = preg_replace('/\/\*.*\*\//Us', '', $css);
+        $input = preg_replace('/\/\*.*\*\//Us', '', $input);
 
         // The next part we do twice. The first run removes the empty rules and the second
         // run removes the empty media queries.
         for ($i = 1; $i <= 2; $i++) {
             // Close empty brackets. This allows for easy identification of empty
             // selectors.
-            $css = preg_replace('/\{\s+\}/', '{}', $css);
+            $input = preg_replace('/\{\s+\}/', '{}', $input);
 
             // Remove trailing whitespace after closed brackets. This eases empty selector
             // identification
-            $css = preg_replace('/\}[ ]{1,}/', '}', $css);
+            $input = preg_replace('/\}[ ]{1,}/', '}', $input);
 
-            // Remove selectors with no rules. To do this we convert new line sinto double
+            // Remove selectors with no rules. To do this we convert new lines into double
             // new lines. This makes the regex easier. We remove all extra new lines after.
-            $css = preg_replace('/\n[^\n]+\{\}\n/', "\n", str_replace("\n", "\n\n", $css));
+            // We also wrap input in new lines. This allows us to catch selectors
+            // against the start or edge of $input
+            $input = preg_replace(
+                '/\n[^\n]+\{\}\n/',
+                "\n",
+                "\n" . str_replace("\n", "\n\n", $input) . "\n"
+            );
+
             // Now we remove the new lines.
-            $css = preg_replace("/[\n]{2,}/", "\n", $css);
+            $input = trim(preg_replace("/[\n]{2,}/", "\n", $input));
+
+            if (!$input) {
+                break;
+            }
         }
 
-        return $css;
+        // Remove some empty media queries that didn't get picked up above
+        $input = preg_replace('/@media[^\{]+\{\s*\}/', '', $input);
+
+        return $input;
     }
 
     /**
      *
      */
-    private function removeNonCriticalLines(string $css, array $locations): string
+    private function removeNonCriticalLines(string $input, array $locations): string
     {
         // Go through each line and see if it is a rule and then decide
         // whether it is critical or non critical
-        $cssLines = array_values(array_filter(explode("\n", $css)));
+        $lines = array_values(array_filter(explode("\n", $input)));
         $criticalRuleRegex = '/' . $this->criticalTags->getEscapedLocationComment(CriticalTags::CRITICAL_RULE_START_WITH_LOCATION)
                              . '(.*)' . $this->criticalTags->getEscapedComment(CriticalTags::CRITICAL_RULE_END) . '/';
 
-        // Remove all rules that are not marked as critical. Do not remove selectors
-        // and media queries
-        $debugLines = false;
-        foreach ($cssLines as $line => $cssLine) {
-            if (!$this->criticalTags->isLineCssRule($cssLine)) {
-                echo $debugLines ? '+   ' . $cssLine  . PHP_EOL : '';
-                continue;
-            }
-
-
-            if (preg_match($criticalRuleRegex, $cssLine, $match) && in_array($match['location'], $locations)) {
-                echo $debugLines ? '++  ' . $cssLine  . PHP_EOL : '';
-                $cssLines[$line] = $match[AbstractPreProcessor::CSS_CONTENT_INDEX];
-            } else {
-                echo $debugLines ? '-   ' . $cssLine  . PHP_EOL : '';
-#                $lineBuffer = trim($cssLines[$line]);
-
-#                if (strlen($lineBuffer) > 1 && substr($lineBuffer, -1) === '}') {
-#                    $cssLines[$line] = '}';
-#                } else {
-                    unset($cssLines[$line]);
-#                }
+        // Remove all rules that are not critical and ave a location that is it
+        // @locations. Do not remove any lines that aren't rules (eg. selectors & brackets)
+        foreach ($lines as $index => $line) {
+            if (preg_match($criticalRuleRegex, $line, $match) && in_array($match['location'], $locations)) {
+                $lines[$index] = $match[AbstractPreProcessor::CSS_CONTENT_INDEX];
+            } elseif ($this->criticalTags->isLineCssRule($line)) {
+                unset($lines[$index]);
             }
         }
-if ($debugLines) {
-    #exit;
-}
-        #print_r($cssLines);exit;
-        // Recreate the string without the removed lines. We pad the string with
-        // new lines to make the regex easier
-        $css = "\n" . implode("\n", $cssLines) . "\n";
 
-        return $css;
+        // Recreate the string without the removed lines.
+        return implode("\n", $lines);
     }
 
     /**
      *
      */
-    private function fixRelativeUrls(string $css, string $url): string
+    private function fixRelativeUrls(string $input, string $url): string
     {
         // Fix relative URLs
-        if (preg_match_all('/url\(([\'"]{0,1})(\.\.\/[^\1]+)\1\)/U', $css, $urlMatches)) {
+        if (preg_match_all('/url\(([\'"]{0,1})(\.\.\/[^\1]+)\1\)/U', $input, $urlMatches)) {
             $fileUrlPath = dirname($url) . '/';
             foreach ($urlMatches[0] as $index => $originalLine) {
                 $relativeUrl = $urlMatches[2][$index];
 
-                $css = str_replace(
+                $input = str_replace(
                     $originalLine,
                     str_replace(
                         $relativeUrl,
                         $fileUrlPath . $relativeUrl,
                         $originalLine
                     ),
-                    $css
+                    $input
                 );
             }
         }
 
-        return trim($css);
+        return $input;
     }
 }

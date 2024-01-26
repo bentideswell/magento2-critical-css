@@ -13,17 +13,26 @@ class CssPreProcessor extends AbstractPreProcessor
      */
     public function preProcessContent(string $input): string
     {
-
-#        $input = $this->removeCriticalCommentsOnSelectors($input);
-
-
+        $input = $this->removeNewLinesInSelectors($input);
         $input = $this->removeAddedNewLinesForCriticalComments($input);
-
+        $input = $this->removeCommentsStillOnNewLine($input);
+        $input = $this->removeCriticalCommentsOnSelectors($input);
         $input = $this->revertDirectiveNames($input);
         $input = $this->convertInlineTagsToRules($input);
 
-
         return $input;
+    }
+
+    /**
+     *
+     */
+    private function removeCommentsStillOnNewLine(string $input): string
+    {
+        return preg_replace(
+            '/\n[ \t]*' . $this->criticalTags->getEscapedLocationComment(CriticalTags::CRITICAL_WITH_LOCATION) . '/Us',
+            "",
+            $input
+        );
     }
 
     /**
@@ -33,8 +42,8 @@ class CssPreProcessor extends AbstractPreProcessor
     {
         for ($i = 0; $i <= 5; $i++) {
             $buffer = preg_replace(
-                '/(\{|\})\s+' . $this->criticalTags->getEscapedLocationComment(CriticalTags::CRITICAL_WITH_LOCATION) . '/Us',
-                "$1",
+                '/\{\s*' . $this->criticalTags->getEscapedLocationComment(CriticalTags::CRITICAL_WITH_LOCATION) . '/Us',
+                "{",
                 $input
             );
 

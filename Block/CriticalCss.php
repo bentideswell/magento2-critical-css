@@ -126,7 +126,6 @@ class CriticalCss extends \Magento\Framework\View\Element\AbstractBlock
      */
     public function isCacheEnabled(): bool
     {
-        return false;
         return $this->getTargetFile() && $this->isCriticalCssEnabled();
     }
 
@@ -135,7 +134,7 @@ class CriticalCss extends \Magento\Framework\View\Element\AbstractBlock
      */
     public function isMinifyEnabled(): bool
     {
-        return false;
+        return true;
     }
 
     /**

@@ -9,22 +9,28 @@ class CriticalTags
     /**
      *
      */
+    const TAG = '@critical';
+    const PREFIX = '/* ' . self::TAG;
+
+    /**
+     *
+     */
     const LOCATION_SYMBOL = '@';
-    const CRITICAL = '/* @critical */';
-    const CRITICAL_WITH_LOCATION = '/* @critical:' . self::LOCATION_SYMBOL . '%s */';
+    const CRITICAL = self::PREFIX . ' */';
+    const CRITICAL_WITH_LOCATION = self::PREFIX . ':' . self::LOCATION_SYMBOL . '%s */';
 
     /**
      *
      */
-    const CRITICAL_START = '/* @critical:start */';
-    const CRITICAL_STOP = '/* @critical:stop */';
-    const CRITICAL_START_WITH_LOCATION = '/* @critical:start:' . self::LOCATION_SYMBOL . '%s */';
+    const CRITICAL_START = self::PREFIX . ':start */';
+    const CRITICAL_STOP = self::PREFIX . ':stop */';
+    const CRITICAL_START_WITH_LOCATION = self::PREFIX . ':start:' . self::LOCATION_SYMBOL . '%s */';
 
     /**
      *
      */
-    const CRITICAL_RULE_START_WITH_LOCATION = '/* @critical:rule:start:' . self::LOCATION_SYMBOL . '%s ';
-    const CRITICAL_RULE_END   = ' @critical:rule:end */';
+    const CRITICAL_RULE_START_WITH_LOCATION = self::PREFIX . ':rule:start:' . self::LOCATION_SYMBOL . '%s: ';
+    const CRITICAL_RULE_END   = ' :' . self::TAG . ':rule:end */';
 
     /**
      *
@@ -81,20 +87,30 @@ class CriticalTags
      */
     public function resolveLocations($locations = null): array
     {
-        $locations = (array)$locations;
-        $locations[] = self::GLOBAL_LOCATION;
+        if (!$locations) {
+            return [self::GLOBAL_LOCATION];
+        }
 
-        return array_unique(
-            array_filter(
-                (array)$locations
+        $locations = (array)$locations;
+
+        foreach ([null, ''] as $location) {
+            if (in_array($location, $locations)) {
+                array_unshift($locations, self::GLOBAL_LOCATION);
+                break;
+            }
+        }
+
+        return array_values(
+            array_unique(
+                array_filter($locations)
             )
-        ) ?: [self::GLOBAL_LOCATION];
+        );
     }
 
     /**
      *
      */
-    public static function getEscapedComment(string $comment): string
+    public static function getEscapedComment(string $comment = self::CRITICAL): string
     {
         return preg_quote($comment, '/');
     }
@@ -102,7 +118,7 @@ class CriticalTags
     /**
      *
      */
-    public static function getEscapedLocationComment(string $comment): string
+    public static function getEscapedLocationComment(string $comment = self::CRITICAL_WITH_LOCATION): string
     {
         // Converts the sprintf template into a usable regex pattern
         $marker = 'ABFJDHDBHFHFJF';
@@ -155,9 +171,20 @@ class CriticalTags
     /**
      *
      */
-    public static function isLineCssRule(string $cssLine): bool
+    public static function isLineCssRule(string $input): bool
     {
-        return strpos($cssLine, '.lib-css(') !== false
-               || (strpos($cssLine, ':') !== false && strpos($cssLine, ';') !== false);
+        if (strpos($input, '.lib-css(') !== false) {
+            // Match a .lib-css line. This is a rule, although var may not be
+            // set and this end up as a blank line that we remove later. It is
+            // very difficult to know for sure at this point so assume it is.
+            return true;
+        }
+
+        if (strpos($input, '@') !== false && preg_match('/[ ]*@[a-zA-Z0-9_\-]+:/', $input)) {
+            // This looks like a LESS variable setter so we don't want to mark it is critical.
+            return false;
+        }
+
+        return strpos($input, ':') !== false && strpos($input, ';') !== false;
     }
 }

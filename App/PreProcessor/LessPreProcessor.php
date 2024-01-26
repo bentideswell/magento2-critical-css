@@ -19,10 +19,10 @@ class LessPreProcessor extends AbstractPreProcessor
             return $input;
         }
 
+        $input = $this->moveCommentsAfterSelectorInside($input);
         $input = $this->fixMissingWhitespace($input);
-
         $input = $this->removeNewLinesInSelectors($input);
-        $input = $this->spitCommentsOntoNewLines($input);
+        $input = $this->splitCommentsOntoNewLines($input);
         $input = $this->removeNonCriticalBlockComments($input);
         $input = $this->addGlobalLocationToRootTags($input);
         $input = $this->removeAddedNewLinesForCriticalComments($input);
@@ -35,16 +35,54 @@ class LessPreProcessor extends AbstractPreProcessor
     /**
      *
      */
-    private function fixMissingWhitespace(string $input): string
+    private function moveCommentsAfterSelectorInside(string $input): string
     {
-        $input = preg_replace('/;\s*\}/', ";\n}", $input);
+        foreach (['getEscapedComment', 'getEscapedLocationComment'] as $method) {
+            $input = preg_replace(
+                '/\}[s \t]*(' . $this->criticalTags->$method() . ')/',
+                '$1}',
+                $input
+            );
+        }
+
         return $input;
     }
 
     /**
      *
      */
-    private function spitCommentsOntoNewLines(string $input): string
+    private function fixMissingWhitespace(string $input): string
+    {
+        // This fixes a very niche issue where the following rule is broken
+        // by our whitespace cleanup:
+        // content: "{..}";
+        // This is supposed to be a pigs nose using characters commonly found
+        // in coding. I know, right.
+        $badContentStorage = [];
+        if (preg_match_all('/content:\s+("[^"]+(\{|\})[^"]*")/', $input, $matches)) {
+            foreach (array_unique($matches[1]) as $badContent) {
+                $badContentKey = md5($badContent);
+                $badContentStorage[$badContentKey] = $badContent;
+                $input = str_replace($badContent, $badContentKey, $input);
+            }
+        }
+
+        $input = preg_replace('/;[ ]*\}/', ";\n}", $input);
+        $input = preg_replace('/([^@]{1})\{[ \t]*([^\n]{1})/', "$1{\n$2", $input);
+
+        if ($badContentStorage) {
+            foreach ($badContentStorage as $badContentKey => $badContent) {
+                $input = str_replace($badContentKey, $badContent, $input);
+            }
+        }
+
+        return $input;
+    }
+
+    /**
+     *
+     */
+    private function splitCommentsOntoNewLines(string $input): string
     {
         return preg_replace('/(\/\*.*\*\/)/Us', '$1' . "\n" . '$2', $input);
     }
@@ -118,7 +156,6 @@ class LessPreProcessor extends AbstractPreProcessor
             foreach ($matches[$captureIndexForCss] as $index => $cssMatch) {
                 $originalCssMatch = $matches[0][$index];
                 $location = $matches['location'][$index];
-
                 $cssMatchLines = explode("\n", $cssMatch);
 
                 foreach ($cssMatchLines as $line => $cssMatchLine) {

@@ -15,16 +15,9 @@ class CriticalCssTest
     /**
      *
      */
-    const SELECTOR_CRITICAL    = '.selC { color: red;   }';
-    const SELECTOR_CRITICAL_B  = '.selCB { color: blue;  }';
-    const SELECTOR_NONCRITICAL = '.selNC { color: green; }';
-
-    /**
-     *
-     */
-    const TYPE_CRITICAL = 'critical';
-    const TYPE_NONCRITICAL = 'noncritical';
-    const TYPE_MIXED = 'mixed';
+    const SELECTOR_CRITICAL    = '.selC{color:red;}';
+    const SELECTOR_CRITICAL_B  = '.selCB{color:blue;}';
+    const SELECTOR_NONCRITICAL = '.selNC{color:green;}';
 
     /**
      *
@@ -64,31 +57,15 @@ class CriticalCssTest
     /**
      *
      */
-    private function getCriticalCss(string $input, $location = null): string
-    {
-#        echo __LINE__ . ': ' . $input  . "\n\n\n";
-        $input = $this->lessPreProcessor->preProcessContent($input);
-        $input = $this->cssPreProcessor->preProcessContent($input);;
-#        echo __LINE__ . ': ' . $input  . "\n\n\n";
-        $input = $this->criticalCssPostProcessor->postProcessContent($input, $location);
-#        echo __LINE__ . ': ' . $input  . "\n\n\n";
-#echo __LINE__ . ': ' . $input  . "\n\n\n";
-#exit;
-        return $input;
-    }
-
-    /**
-     *
-     */
     public function doTests(): array
     {
-        $output = [];
-
         foreach ([
-#            'doBasicTypeTests',
-#            'doSingleLocationTests',
-#            'doMultiLocationTests',
-#            'doStaticMultiLocationTests',
+            'doLocationResolutionTests',
+            'doManualTest',
+            'doBasicTypeTests',
+            'doSingleLocationTests',
+            'doMultiLocationTests',
+            'doStaticMultiLocationTests',
             'doInputOutputTests'
         ] as $method) {
             $this->$method();
@@ -100,32 +77,111 @@ class CriticalCssTest
     /**
      *
      */
+    private function getCriticalCss(string $input, $location = null, bool $debug = false): string
+    {
+        $processes = [
+            'less-pre-process' => function ($input) {
+                return $this->lessPreProcessor->preProcessContent($input);
+            },
+            'css-pre-process' => function ($input) {
+                return $this->cssPreProcessor->preProcessContent($input);
+            },
+            'css-post-process' => function ($input) use ($location) {
+                return $this->criticalCssPostProcessor->postProcessContent($input, $location);
+            },
+            'clean-whitespace' => function ($input) {
+                return str_replace(["\n", ' '], '', $input);
+            }
+        ];
+
+        if ($debug) {
+            echo "\n\n#################\n\n";
+            echo 'Location: ' . print_r($location, true) . "\n";
+            echo '  Before: ' . trim($input) . "\n\n";
+        }
+
+        foreach ($processes as $processId => $process) {
+            $input = $process($input);
+
+            if ($debug) {
+                echo "After '{$processId}'\n\n" . trim($input) . "\n\n";
+            }
+        }
+
+        if ($debug) {
+            echo "\n#################\n\n";
+        }
+
+        return $input;
+    }
+
+    /**
+     *
+     */
+    private function doLocationResolutionTests(): void
+    {
+        $global = CriticalTags::GLOBAL_LOCATION;
+        $product = 'product';
+        $inputs = [
+            [null, [$global]],
+            ['', [$global]],
+            [$global, [$global]],
+            [[null, '', $global], [$global]],
+            [$product, [$product]],
+            [[$product], [$product]],
+            [[null, $product], [$global, $product]],
+            [[$global, $product], [$global, $product]],
+            [[null, '', $global, $product], [$global, $product]],
+            [[$global, $product, null, ''], [$global, $product]]
+        ];
+
+        foreach ($inputs as $input) {
+            list($input, $expectedOutput) = $input;
+
+            $actualOutput = $this->criticalTags->resolveLocations($input, $expectedOutput);
+
+            if ($actualOutput !== $expectedOutput) {
+                echo "Resolved locations error.\n";
+                echo "   Input = " . print_r($input, true) . PHP_EOL;
+                echo "Expected = " . print_r($expectedOutput, true) . PHP_EOL;
+                echo "  Actual = " . print_r($actualOutput, true) . PHP_EOL;
+                exit(1);
+            }
+        }
+    }
+
+    /**
+     *
+     */
+    private function doManualTest(): void
+    {
+    }
+
+    /**
+     *
+     */
     private function doBasicTypeTests(): void
     {
         $inputs = [
             '' => [
-                self::SELECTOR_NONCRITICAL . CriticalTags::CRITICAL_START . '%s' . CriticalTags::CRITICAL_STOP,
-                '%s' . CriticalTags::CRITICAL
+                self::SELECTOR_NONCRITICAL . CriticalTags::CRITICAL_START . self::SELECTOR_CRITICAL . CriticalTags::CRITICAL_STOP,
+                self::SELECTOR_CRITICAL . CriticalTags::CRITICAL
             ],
             CriticalTags::GLOBAL_LOCATION => [
-                CriticalTags::CRITICAL_START . '%s' . CriticalTags::CRITICAL_STOP,
-                '%s' . CriticalTags::CRITICAL
+                CriticalTags::CRITICAL_START . self::SELECTOR_CRITICAL . CriticalTags::CRITICAL_STOP,
+                self::SELECTOR_CRITICAL . CriticalTags::getCriticalTag(CriticalTags::GLOBAL_LOCATION)
             ],
             'product' => [
-                CriticalTags::getCriticalStartTag('product') . '%s' . CriticalTags::CRITICAL_STOP,
-                '%s' . CriticalTags::getCriticalTag('product')
+                CriticalTags::getCriticalStartTag('product') . self::SELECTOR_CRITICAL . CriticalTags::CRITICAL_STOP,
+                self::SELECTOR_CRITICAL . CriticalTags::getCriticalTag('product')
             ]
         ];
 
         foreach ($inputs as $location => $patterns) {
-            foreach ($patterns as $pattern) {
-                $input = sprintf($pattern, self::SELECTOR_CRITICAL);
+            foreach ($patterns as $input) {
                 $criticalCssResult = $this->getCriticalCss($input, $location);
 
                 if (strpos($criticalCssResult, self::SELECTOR_CRITICAL) === false) {
-                    echo $location . PHP_EOL;
-                    echo $input . PHP_EOL;
-                    echo $criticalCssResult;exit;
                     throw new Exception("Missing critical CSS on " . __LINE__);
                 } elseif (strpos($criticalCssResult, self::SELECTOR_NONCRITICAL) !== false) {
                     throw new Execption("Unexpected non-critical selector.");
@@ -142,7 +198,7 @@ class CriticalCssTest
     {
         $locations = [
             '',
-            'global',
+            CriticalTags::GLOBAL_LOCATION,
             'product',
             'cms_page',
             'id_with-1234'
@@ -155,13 +211,15 @@ class CriticalCssTest
 
         foreach ($locations as $inputLocation) {
             $inputs = [
-                CriticalTags::getCriticalStartTag($inputLocation) . $targetSelector . CriticalTags::CRITICAL_STOP,
+                CriticalTags::getCriticalStartTag($inputLocation) . self::SELECTOR_CRITICAL . CriticalTags::CRITICAL_STOP
+                . CriticalTags::getCriticalStartTag() . self::SELECTOR_CRITICAL_B . CriticalTags::CRITICAL_STOP,
                 $targetSelector . CriticalTags::getCriticalTag($inputLocation)
             ];
 
             if (!$inputLocation) {
                 $inputs[] = CriticalTags::CRITICAL_START . $targetSelector . CriticalTags::CRITICAL_STOP;
                 $inputs[] = $targetSelector . CriticalTags::CRITICAL;
+                $inputs[] = $targetSelector . CriticalTags::getCriticalTag(CriticalTags::GLOBAL_LOCATION);
             }
 
             $outputLocation = $inputLocation ?: CriticalTags::GLOBAL_LOCATION;
@@ -177,28 +235,8 @@ class CriticalCssTest
                 }
 
                 if ($criticalWithWrongOutputLocation = $this->getCriticalCss($input, $outputLocationWrong)) {
-
-echo $outputLocationWrong . PHP_EOL;
-echo $input . PHP_EOL;
-                    echo $criticalWithWrongOutputLocation;exit;
                     echo "Unexpected critical output using wrong location.";
                     exit(1);
-                }
-
-                if ($inputLocation) {
-                    $modifiedInput = $input . str_replace($outputLocation, $outputLocationWrong, str_replace($targetSelector, $wrongSelector, $input));
-
-                    $criticalCssWithWrongInputLocation = trim(
-                        $this->getCriticalCss($modifiedInput, $outputLocationWrong)
-                    );
-
-                    $hasError = strpos($criticalCssWithWrongInputLocation, $wrongSelector) === false
-                                || strpos($criticalCssWithWrongInputLocation, $targetSelector) !== false;
-
-                    if ($hasError) {
-                        echo "Unexpected result with modified input.";
-                        exit(1);
-                    }
                 }
             }
         }
@@ -209,114 +247,75 @@ echo $input . PHP_EOL;
      */
     private function doMultiLocationTests(): void
     {
-        $globalLocation = CriticalTags::GLOBAL_LOCATION;
+        $globalLocation = '';
         $location = 'product';
-        $critical = self::TYPE_CRITICAL;
-        $nonCritical = self::TYPE_NONCRITICAL;
-
+        $selectors = [self::SELECTOR_CRITICAL, self::SELECTOR_CRITICAL_B];
         $inputs = [
             [
-                $critical => [
-                    $globalLocation => self::SELECTOR_CRITICAL . CriticalTags::getCriticalTag() . self::SELECTOR_CRITICAL_B . CriticalTags::getCriticalTag(),
-                ],
-                $nonCritical => [
-                    self::SELECTOR_NONCRITICAL,
-                ]
+                $location => '',
+                $globalLocation => self::SELECTOR_CRITICAL . CriticalTags::getCriticalTag()
             ],
             [
-                $critical => [
-                    $location => self::SELECTOR_CRITICAL . CriticalTags::getCriticalTag($location),
-                    $globalLocation => self::SELECTOR_CRITICAL_B . CriticalTags::getCriticalTag(),
-                ],
-                $nonCritical => [
-                    self::SELECTOR_NONCRITICAL
-                ]
+                $location => self::SELECTOR_CRITICAL . CriticalTags::getCriticalTag($location),
+                $globalLocation => self::SELECTOR_CRITICAL_B . CriticalTags::getCriticalTag(),
             ],
             [
-                $critical => [
-                    $location => CriticalTags::getCriticalStartTag($location) . self::SELECTOR_CRITICAL . CriticalTags::CRITICAL_STOP,
-                    $globalLocation => CriticalTags::getCriticalStartTag() . self::SELECTOR_CRITICAL_B . CriticalTags::CRITICAL_STOP
-                ],
-                $nonCritical => [
-                    self::SELECTOR_NONCRITICAL
-                ]
+                $location => CriticalTags::getCriticalStartTag($location) . self::SELECTOR_CRITICAL . CriticalTags::CRITICAL_STOP,
+                $globalLocation => CriticalTags::getCriticalStartTag() . self::SELECTOR_CRITICAL_B . CriticalTags::CRITICAL_STOP
             ],
             [
-                $critical => [
-                    $location => CriticalTags::getCriticalStartTag($location) . self::SELECTOR_CRITICAL . CriticalTags::CRITICAL_STOP
-                ],
-                $nonCritical => [
-                    self::SELECTOR_NONCRITICAL
-                ]
+                $location => CriticalTags::getCriticalStartTag($location) . self::SELECTOR_CRITICAL . CriticalTags::CRITICAL_STOP,
+                $globalLocation => ''
             ]
         ];
 
         foreach ($inputs as $input) {
-            $inputCss = '';
-            foreach ($input as $type => $lines) {
-                $inputCss .= implode('', (array)$lines);
-            }
+            $inputCss = implode("\n", $input);
 
-            $shouldHaveCritical = !empty($input[$critical]);
+            $input['wrong-location-no-exist'] = '';
 
-            $criticalResults = array_filter(array_unique([
-                $this->getCriticalCss($inputCss, ['', $location]),
-                $this->getCriticalCss($inputCss, [$globalLocation, $location])
-            ]));
+            foreach ($input as $location => $locationInput) {
+                $outputCss = $this->getCriticalCss($inputCss, $location);
 
-            if (!$shouldHaveCritical) {
-                echo 'should not have critical so add code to test';
-                exit;
-            }
-
-            if (count($criticalResults) > 1) {
-                throw new \Exception(
-                    sprintf(
-                        "CSS results differ when using empty string and global as location.\n\nInput = %s\nOutput = %s\n\n",
-                        $inputCss,
-                        print_r($criticalResults, true)
-                    )
-                );
-            } elseif (count($criticalResults) === 0) {
-                throw new \Exception(
-                    sprintf(
-                        "No critical CSS found from input: %s",
-                        $inputCss
-                    )
-                );
-            }
-
-            $criticalCssResult = $criticalResults[0];
-            $criticalCssBuffer = $criticalCssResult;
-
-            foreach ([self::SELECTOR_CRITICAL, self::SELECTOR_CRITICAL_B] as $criticalSelector) {
-                $inputCssContainsCriticalSelector = strpos($criticalCssResult, $criticalSelector) !== false;
-                $outputCriticalCssContainsCriticalSelector = strpos($criticalCssResult, $criticalSelector) !== false;
-
-                if ($inputCssContainsCriticalSelector !== $outputCriticalCssContainsCriticalSelector) {
-                    throw new \RuntimeException(
-                        sprintf(
-                            "Inconsistency with critical CSS selector '%s'.\nExpected = %s\nActual = %s\nInput = %s\nOutput = %s",
-                            $criticalSelector,
-                            (int)$inputCssContainsCriticalSelector,
-                            (int)$outputCriticalCssContainsCriticalSelector,
-                            $inputCss,
-                            $criticalCssResult
-                        )
-                    );
+                if (!$locationInput) {
+                    if ($outputCss) {
+                        echo "Input was empty but we got output: " . $outputCss . "\n";
+                        exit(1);
+                    }
+                    // Input and output were empty, so we are happy
+                } elseif (!$outputCss) {
+                    echo "We expected output but found none in " . __LINE__ . PHP_EOL;
+                    exit(1);
+                } else {
+                    foreach ($selectors as $selector) {
+                        if (strpos($locationInput, $selector) !== false && strpos($outputCss, $selector) === false) {
+                            echo "Input has selector " . $selector . " but this is not in output: " . $outputCss . PHP_EOL;
+                            exit(1);
+                        } elseif (strpos($locationInput, $selector) === false && strpos($outputCss, $selector) !== false) {
+                            echo "Input does not have selector " . $selector . " but this is in output: " . $outputCss . PHP_EOL;
+                            exit(1);
+                        }
+                    }
                 }
-
-                $criticalCssBuffer = trim(str_replace($criticalSelector, '', $criticalCssBuffer));
             }
 
-            if ($criticalCssBuffer) {
-                throw new \RuntimeException(
-                    sprintf(
-                        "Critical CSS not all removed.\nInput = %s\nOutput = %s",
-                        $inputCss,
-                        $criticalCssBuffer
-                    )
-                );
+            // Now test with both keys to check we get all
+            $locations = array_keys($input);
+            $outputCss = $this->getCriticalCss($inputCss, $locations);
+
+            if (!$outputCss) {
+                echo "We expected output but found none in " . __LINE__ . PHP_EOL;
+                exit(1);
+            } else {
+                foreach ($selectors as $selector) {
+                    if (strpos($inputCss, $selector) !== false && strpos($outputCss, $selector) === false) {
+                        echo "Input has selector " . $selector . " but this is not in output: " . $outputCss . PHP_EOL;
+                        exit(1);
+                    } elseif (strpos($inputCss, $selector) === false && strpos($outputCss, $selector) !== false) {
+                        echo "Input does not have selector " . $selector . " but this is in output: " . $outputCss . PHP_EOL;
+                        exit(1);
+                    }
+                }
             }
         }
     }
@@ -326,7 +325,7 @@ echo $input . PHP_EOL;
      */
     private function doStaticMultiLocationTests(): void
     {
-        $glue = "\n";
+        $glue = "";
         $inputCss = implode(
             $glue,
             [
@@ -357,7 +356,7 @@ echo $input . PHP_EOL;
         $this->doVariablesMatch(
             self::SELECTOR_CRITICAL . $glue . self::SELECTOR_CRITICAL_B,
             $this->getCriticalCss($inputCss, [CriticalTags::GLOBAL_LOCATION, 'product']),
-            'Critical selector with 1 location and implied global'
+            'Critical selector with 1 location and implied global B'
         );
     }
 
@@ -367,8 +366,8 @@ echo $input . PHP_EOL;
     private function doInputOutputTests(): void
     {
         $inputs = [
-#            "/* @critical:start */@font-face{font-weight:@_weight_normal;font-style:normal;}/* @critical:stop */" => "@font-face{font-weight:@_weight_normal;font-style:normal;}",
-#            "@font-face{font-weight:@_weight_normal;/* @critical */ font-style:normal;}" => "@font-face{font-weight:@_weight_normal;}",
+            "/* @critical:start */@font-face{font-weight:@_weight_normal;font-style:normal;}/* @critical:stop */" => "@font-face{font-weight:@_weight_normal;font-style:normal;}",
+            "@font-face{font-weight:@_weight_normal;/* @critical */ font-style:normal;}" => "@font-face{font-weight:@_weight_normal;}",
             "& when (@media-common = true) {
     /* @critical:start */
     *, *::before, *::after {
@@ -415,9 +414,11 @@ echo $input . PHP_EOL;
         .lib-css(-moz-osx-font-smoothing, @body__-moz-osx-font-smoothing);
     }
 }
-"
-        ];
+",
+".selector{content: \"{..}\"; " . CriticalTags::CRITICAL . "}" => ".selector{content: \"{..}\";}",
+CriticalTags::CRITICAL_START . "&[data-percent=\"@{index}\"] {color:red;}" . CriticalTags::CRITICAL_STOP => '&[data-percent="@{index}"]{color:red;}'
 
+        ];
 
         foreach ($inputs as $input => $expectedOutput) {
             $actualOutput = $this->getCriticalCss($input);
