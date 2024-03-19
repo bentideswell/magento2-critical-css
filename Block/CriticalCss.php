@@ -53,10 +53,6 @@ class CriticalCss extends \Magento\Framework\View\Element\AbstractBlock
         $this->deploymentVersionStorage = $deploymentVersionStorage;
 
         parent::__construct($context, $data);
-
-        $this->setCacheLifetime(
-            $this->isCacheEnabled() ? 31449600 : null
-        );
     }
 
     /**
@@ -135,6 +131,14 @@ class CriticalCss extends \Magento\Framework\View\Element\AbstractBlock
     public function isMinifyEnabled(): bool
     {
         return true;
+    }
+
+    /**
+     *
+     */
+    public function getCacheLifetime()
+    {
+        return $this->isCacheEnabled() ? parent::getCacheLifetime() : null;
     }
 
     /**
