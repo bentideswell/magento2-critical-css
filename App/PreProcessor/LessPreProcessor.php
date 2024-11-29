@@ -15,10 +15,13 @@ class LessPreProcessor extends AbstractPreProcessor
     public function preProcessContent(string $input): string
     {
         // Does not contain a critical tag so give it back
-        if (strpos($input, '@critical') === false) {
+        if (strpos($input, CriticalTags::TAG) === false) {
             return $input;
         }
 
+        
+        
+        $input = $this->updateCriticalCommentsToIncludeExclamation($input);
         $input = $this->moveCommentsAfterSelectorInside($input);
         $input = $this->fixMissingWhitespace($input);
         $input = $this->removeNewLinesInSelectors($input);
@@ -30,6 +33,18 @@ class LessPreProcessor extends AbstractPreProcessor
         $input = $this->moveAllCriticalCommentsInline($input);
 
         return $input;
+    }
+
+    /**
+     * 
+     */
+    private function updateCriticalCommentsToIncludeExclamation(string $input): string
+    {
+        return preg_replace(
+            '/\/\*([^\!]*' . CriticalTags::TAG . ')/Us',
+            '/*!$1',
+            $input
+        );
     }
 
     /**

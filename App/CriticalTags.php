@@ -10,7 +10,7 @@ class CriticalTags
      *
      */
     const TAG = '@critical';
-    const PREFIX = '/* ' . self::TAG;
+    const PREFIX = '/*! ' . self::TAG;
 
     /**
      *
