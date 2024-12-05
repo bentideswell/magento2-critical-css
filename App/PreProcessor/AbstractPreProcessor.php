@@ -25,6 +25,11 @@ abstract class AbstractPreProcessor extends AbstractProcessor implements PreProc
             return;
         }
 
+        if ($this->isOriginalFlag->__invoke() === true) {
+            // This is the original CSS file, with no critical applied
+            return;
+        }
+
         $chain->setContent(
             $this->preProcessContent(
                 $chain->getContent()

@@ -26,14 +26,21 @@ abstract class AbstractProcessor
     protected $criticalTags = null;
 
     /**
+     * 
+     */
+    protected $isOriginalFlag = null;
+
+    /**
      *
      */
     public function __construct(
         \FishPig\CriticalCss\Model\Config $config,
-        CriticalTags $criticalTags
+        CriticalTags $criticalTags,
+        \FishPig\CriticalCss\App\Flag\IsOriginal $isOriginalFlag
     ) {
         $this->config = $config;
         $this->criticalTags = $criticalTags;
+        $this->isOriginalFlag = $isOriginalFlag;
     }
 
     /**

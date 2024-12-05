@@ -18,6 +18,10 @@ class CriticalCssPostProcessor extends AbstractProcessor
         $locations = null,
         ?string $url = null
     ): string {
+        if ($this->isOriginalFlag->__invoke() === true) {
+            return $input;
+        }
+
         $input = $this->removeNewLinesInSelectors($input);
         $input = $this->removeNonCriticalLines(
             $input,

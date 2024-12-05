@@ -26,7 +26,10 @@
             </argument>
         </arguments>
     </type>
-    <type name="Magento\Framework\View\Asset\File">
+    <!--<type name="Magento\Framework\View\Asset\File">
         <plugin name="fishpig-critical-css" type="FishPig\CriticalCss\Plugin\Magento\Framework\View\Asset\FilePlugin"/>
+    </type>-->
+    <type name="Magento\Framework\View\Asset\Source">
+        <plugin name="fishpig-critical-css" type="FishPig\CriticalCss\Plugin\Magento\Framework\View\Asset\SourcePlugin"/>
     </type>
 </config>
