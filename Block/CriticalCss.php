@@ -37,6 +37,11 @@ class CriticalCss extends \Magento\Framework\View\Element\AbstractBlock
     ];
 
     /**
+     * 
+     */
+    private $cache;
+
+    /**
      *
      */
     public function __construct(
@@ -45,13 +50,14 @@ class CriticalCss extends \Magento\Framework\View\Element\AbstractBlock
         \FishPig\CriticalCss\Model\Config $config,
         \tubalmartin\CssMin\Minifier $cssMinifier,
         StorageInterface $deploymentVersionStorage,
+        \FishPig\CriticalCss\App\Cache $cache,
         array $data = []
     ) {
         $this->criticalCssProvider = $criticalCssProvider;
         $this->config = $config;
         $this->cssMinifier = $cssMinifier;
         $this->deploymentVersionStorage = $deploymentVersionStorage;
-
+        $this->cache = $cache;
         parent::__construct($context, $data);
     }
 
@@ -79,6 +85,21 @@ class CriticalCss extends \Magento\Framework\View\Element\AbstractBlock
      */
     protected function _toHtml()
     {
+        if ($css = $this->getCss()) {
+            return sprintf(
+                '<style type="text/css">%s</style>',
+                $css
+            );
+        }
+
+        return '';
+    }
+
+    /**
+     * 
+     */
+    private function getCss()
+    {
         if (!$this->isCriticalCssEnabled()) {
             return '';
         }
@@ -87,18 +108,29 @@ class CriticalCss extends \Magento\Framework\View\Element\AbstractBlock
             return '';
         }
 
+        $cacheId = null;
+
+        if ($this->isCacheEnabled()) {
+            if ($cacheId = $this->getCacheId()) {
+                if ($css = $this->cache->load($cacheId)) {
+                    return $css;
+                }
+            }
+        }
+
         if (!($css = $this->criticalCssProvider->get($targetFile, $this->getLocations()))) {
             return '';
         }
-
+        
         if ($this->isMinifyEnabled()) {
             $css = $this->cssMinifier->run($css);
         }
 
-        return sprintf(
-            '<style type="text/css">%s</style>',
-            $css
-        );
+        if ($cacheId) {
+            $this->cache->save($css, $cacheId);
+        }
+
+        return $css;
     }
 
     /**
@@ -136,23 +168,18 @@ class CriticalCss extends \Magento\Framework\View\Element\AbstractBlock
     /**
      *
      */
-    public function getCacheLifetime()
+    public function getCacheId(): ?string
     {
-        return $this->isCacheEnabled() ? parent::getCacheLifetime() : null;
-    }
-
-    /**
-     *
-     */
-    public function getCacheKeyInfo()
-    {
-        return [
+        if (!$this->isCacheEnabled()) {
+            return null;
+        }
+        return md5(implode('::', [
             $this->getNameInLayout(),
             $this->getTargetFile(),
-            implode('::', $this->getLocations()),
+            implode(',', $this->getLocations()),
             (int)$this->isCriticalCssEnabled(),
             (int)$this->isMinifyEnabled(),
-            $this->deploymentVersionStorage->load()
-        ];
+            $this->deploymentVersionStorage->load(),
+        ]));
     }
 }

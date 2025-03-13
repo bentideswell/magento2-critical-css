@@ -1,0 +1,7 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:framework:Cache/etc/cache.xsd">
+    <type name="fishpig_critical_css" instance="FishPig\CriticalCss\App\Cache">
+        <label>Critical CSS</label>
+        <description>Critical CSS cache by FishPig.</description>
+    </type>
+</config>

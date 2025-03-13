@@ -1,7 +1,7 @@
 {
     "name": "fishpig/magento2-critical-css",
     "description": "",
-    "version": "1.2.1",
+    "version": "1.3.0",
     "type": "magento2-module",
     "autoload": {
         "files": [

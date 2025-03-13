@@ -32,4 +32,12 @@
     <type name="Magento\Framework\View\Asset\Source">
         <plugin name="fishpig-critical-css" type="FishPig\CriticalCss\Plugin\Magento\Framework\View\Asset\SourcePlugin"/>
     </type>
+
+    <!--/** Stop LESS files being minified */-->
+    <type name="Magento\Framework\Css\PreProcessor\Adapter\Less\Processor">
+        <plugin name="fishpig-critical-css" type="FishPig\CriticalCss\Plugin\Magento\Framework\Css\PreProcessor\Adapter\Less\ProcessorPlugin"/>
+    </type>
+    <type name="Magento\Framework\App\State">
+        <plugin name="fishpig-critical-css" type="FishPig\CriticalCss\Plugin\Magento\Framework\App\StatePlugin"/>
+    </type>
 </config>
