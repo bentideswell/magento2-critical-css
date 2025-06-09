@@ -112,14 +112,18 @@ class CriticalCssPostProcessor extends AbstractProcessor
         // Fix relative URLs
         if (preg_match_all('/url\(([\'"]{0,1})(\.\.\/[^\1]+)\1\)/U', $input, $urlMatches)) {
             $fileUrlPath = dirname($url) . '/';
+
+
             foreach ($urlMatches[0] as $index => $originalLine) {
                 $relativeUrl = $urlMatches[2][$index];
+
+                $newUrl = $this->getRelativeUrl($fileUrlPath . $relativeUrl);
 
                 $input = str_replace(
                     $originalLine,
                     str_replace(
                         $relativeUrl,
-                        $fileUrlPath . $relativeUrl,
+                        $newUrl,
                         $originalLine
                     ),
                     $input
@@ -128,5 +132,17 @@ class CriticalCssPostProcessor extends AbstractProcessor
         }
 
         return $input;
+    }
+
+    /**
+     * 
+     */
+    private function getRelativeUrl(string $url): string
+    {
+        return preg_replace(
+            '/^http(s?):\/\/[^\/]+/',
+            '',
+            $url
+        );
     }
 }
