@@ -13,6 +13,10 @@ class CssPreProcessor extends AbstractPreProcessor
      */
     public function preProcessContent(string $input): string
     {
+        if (strpos($input, '.lib') !== false) {
+            $input = $this->getLessPreProcessor()->preProcessContent($input);
+        }
+        
         $input = $this->removeNewLinesInSelectors($input);
         $input = $this->removeAddedNewLinesForCriticalComments($input);
         $input = $this->removeCommentsStillOnNewLine($input);
@@ -23,6 +27,13 @@ class CssPreProcessor extends AbstractPreProcessor
         return $input;
     }
 
+    private function getLessPreProcessor(): LessPreProcessor
+    {
+        return \Magento\Framework\App\ObjectManager::getInstance()->get(
+            LessPreProcessor::class
+        );
+    }
+    
     /**
      *
      */

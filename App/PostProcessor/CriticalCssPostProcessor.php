@@ -43,10 +43,10 @@ class CriticalCssPostProcessor extends AbstractProcessor
     {
         // Remove comments
         $input = preg_replace('/\/\*.*\*\//Us', '', $input);
-
+        
         // The next part we do twice. The first run removes the empty rules and the second
         // run removes the empty media queries.
-        for ($i = 1; $i <= 2; $i++) {
+        for ($i = 1; $i <= 4; $i++) {
             // Close empty brackets. This allows for easy identification of empty
             // selectors.
             $input = preg_replace('/\{\s+\}/', '{}', $input);

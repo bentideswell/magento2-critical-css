@@ -18,8 +18,9 @@ class LessPreProcessor extends AbstractPreProcessor
         if (strpos($input, CriticalTags::TAG) === false) {
             return $input;
         }
-        
+
         $input = $this->updateCriticalCommentsToIncludeExclamation($input);
+        $input = $this->removeNonCriticalBlockComments($input);
         $input = $this->moveCommentsAfterSelectorInside($input);
         $input = $this->fixMissingWhitespace($input);
         $input = $this->removeNewLinesInSelectors($input);

@@ -118,7 +118,12 @@ class CriticalCss extends \Magento\Framework\View\Element\AbstractBlock
             }
         }
 
-        if (!($css = $this->criticalCssProvider->get($targetFile, $this->getLocations()))) {
+        $css = '';
+        foreach ((array)$targetFile as $targetFile) {
+            $css .= trim($this->criticalCssProvider->get($targetFile, $this->getLocations()));
+        }
+
+        if (!$css) {
             return '';
         }
         
@@ -136,7 +141,7 @@ class CriticalCss extends \Magento\Framework\View\Element\AbstractBlock
     /**
      *
      */
-    public function getTargetFile(): ?string
+    public function getTargetFile(): mixed
     {
         return $this->getData('target_file') ?: null;
     }
@@ -175,7 +180,7 @@ class CriticalCss extends \Magento\Framework\View\Element\AbstractBlock
         }
         return md5(implode('::', [
             $this->getNameInLayout(),
-            $this->getTargetFile(),
+            implode('::', (array)$this->getTargetFile()),
             implode(',', $this->getLocations()),
             (int)$this->isCriticalCssEnabled(),
             (int)$this->isMinifyEnabled(),
