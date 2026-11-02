@@ -43,7 +43,7 @@ class CompileCommand extends \Symfony\Component\Console\Command\Command
     public function __construct(
         \Magento\Framework\App\State $appState,
 //        \FishPig\CriticalCss\App\DataProvider $dataProvider,
-        string $name = null
+        ?string $name = null
     ) {
         $this->appState = $appState;
 //        $this->dataProvider = $dataProvider;
